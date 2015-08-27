@@ -19,6 +19,11 @@ def has_key(x, y):
     else: return y in x
 
 try:
+    from BeautifulSoup import BeautifulSoup
+except ImportError:
+    BeautifulSoup = False
+
+try:
     import htmlentitydefs
     import urlparse
     import HTMLParser
@@ -189,6 +194,7 @@ class HTML2Text(HTMLParser.HTMLParser):
         self.body_width = BODY_WIDTH
         self.skip_internal_links = SKIP_INTERNAL_LINKS
         self.inline_links = INLINE_LINKS
+        self.initial_list_indent = 0
         self.google_list_indent = GOOGLE_LIST_INDENT
         self.ignore_links = IGNORE_ANCHORS
         self.ignore_images = IGNORE_IMAGES
@@ -542,7 +548,7 @@ class HTML2Text(HTMLParser.HTMLParser):
                 if self.google_doc:
                     nest_count = self.google_nest_count(tag_style)
                 else:
-                    nest_count = len(self.list)
+                    nest_count = len(self.list) - 1 + self.initial_list_indent
                 self.o("  " * nest_count) #TODO: line up <ol><li>s > 9 correctly.
                 if li['name'] == "ul": self.o(self.ul_item_mark + " ")
                 elif li['name'] == "ol":
@@ -891,6 +897,13 @@ def main():
         data = sys.stdin.read()
 
     data = data.decode(encoding)
+
+    # Running the HTML through BeautifulSoup fixes things like
+    # <b><i>Reversed tags</b></i> (e.g. in Down Process)
+    # If BS could not be imported, this step is skipped
+    if BeautifulSoup:
+        data = str(BeautifulSoup(data))
+
     h = HTML2Text(baseurl=baseurl)
     # handle options
     if options.ul_style_dash: h.ul_item_mark = '-'
